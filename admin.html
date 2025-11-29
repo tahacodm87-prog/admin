@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="UTF-8">
+<title>پنل مدیریت</title>
+<style>
+body {
+    font-family: sans-serif;
+    direction: rtl;
+    margin: 0;
+    background: #f5f5f5;
+    padding: 20px;
+}
+h2, h3 { text-align: center; }
+input, select, button { margin: 5px; padding: 8px; }
+button { cursor: pointer; }
+table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+th { background: #d10020; color: white; }
+</style>
+</head>
+<body>
+
+<div id="loginSection">
+    <h2>ورود به پنل مدیریت</h2>
+    <div style="text-align:center; margin-top:30px;">
+        <input type="password" id="adminPass" placeholder="رمز عبور">
+        <button onclick="login()">ورود</button>
+        <p id="loginMsg" style="color:red;"></p>
+    </div>
+</div>
+
+<div id="adminPanel" style="display:none; padding:20px;">
+    <h2>پنل مدیریت</h2>
+
+    <h3>دسته‌ها</h3>
+    <input type="text" id="newCategory" placeholder="نام دسته جدید">
+    <button onclick="addNewCategory()">افزودن دسته</button>
+    <div id="categoryList"></div>
+
+    <h3>محصولات</h3>
+    <input type="text" id="prodTitle" placeholder="عنوان">
+    <input type="number" id="prodPrice" placeholder="قیمت">
+    <input type="text" id="prodImage" placeholder="آدرس تصویر">
+    <select id="prodCategory"></select>
+    <button onclick="addNewProduct()">افزودن محصول</button>
+
+    <table id="prodTable">
+        <thead>
+            <tr>
+                <th>ID</th><th>عنوان</th><th>قیمت</th><th>تصویر</th><th>دسته</th><th>ویرایش</th><th>حذف</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script>
+// رمز عبور پنل
+const adminPassword = "myshop";
+
+// داده‌ها
+let products = JSON.parse(localStorage.getItem("products")) || [];
+let categories = JSON.parse(localStorage.getItem("categories")) || ["گردنبند", "دستبند", "ساعت", "کلاه"];
+
+// ذخیره داده‌ها
+function saveData() {
+    localStorage.setItem("products", JSON.stringify(products));
+    localStorage.setItem("categories", JSON.stringify(categories));
+}
+
+// ورود
+function login(){
+    let pass = document.getElementById("adminPass").value;
+    if(pass===adminPassword){
+        document.getElementById("loginSection").style.display="none";
+        document.getElementById("adminPanel").style.display="block";
+        refreshCategories();
+        refreshProducts();
+    }else{
+        document.getElementById("loginMsg").innerText="رمز عبور اشتباه است!";
+    }
+}
+
+// دسته‌ها
+function refreshCategories(){
+    let list = document.getElementById("categoryList");
+    let select = document.getElementById("prodCategory");
+    list.innerHTML="";
+    select.innerHTML="";
+    categories.forEach(c=>{
+        list.innerHTML+=`<div>${c} <button onclick="removeCategory('${c}')">حذف</button></div>`;
+        select.innerHTML+=`<option value="${c}">${c}</option>`;
+    });
+}
+
+function addCategory(name){
+    if(!categories.includes(name)){
+        categories.push(name);
+        saveData();
+    }
+}
+
+function deleteCategory(name){
+    categories = categories.filter(c=>c!=name);
+    products = products.filter(p=>p.category != name);
+    saveData();
+}
+
+function addNewCategory(){
+    let name = document.getElementById("newCategory").value.trim();
+    if(name) addCategory(name);
+    document.getElementById("newCategory").value="";
+    refreshCategories();
+    refreshProducts();
+}
+
+function removeCategory(name){
+    if(confirm("آیا می‌خواهید این دسته حذف شود؟")){
+        deleteCategory(name);
+        refreshCategories();
+        refreshProducts();
+    }
+}
+
+// محصولات
+function addProduct(title, price, image, category){
+    let id = products.length ? products[products.length - 1].id + 1 : 1;
+    products.push({ id, title, price: parseInt(price), image, category });
+    saveData();
+}
+
+function editProduct(id, title, price, image, category){
+    let p = products.find(x => x.id == id);
+    if(p){
+        p.title = title;
+        p.price = parseInt(price);
+        p.image = image;
+        p.category = category;
+        saveData();
+    }
+}
+
+function deleteProduct(id){
+    products = products.filter(p => p.id != id);
+    saveData();
+}
+
+function refreshProducts(){
+    let tbody = document.querySelector("#prodTable tbody");
+    tbody.innerHTML="";
+    products.forEach(p=>{
+        tbody.innerHTML+=`<tr>
+            <td>${p.id}</td>
+            <td>${p.title}</td>
+            <td>${p.price.toLocaleString()}</td>
+            <td><img src="${p.image}" width="50"></td>
+            <td>${p.category}</td>
+            <td><button onclick="editProductPrompt(${p.id})">ویرایش</button></td>
+            <td><button onclick="deleteProductConfirm(${p.id})">حذف</button></td>
+        </tr>`;
+    });
+}
+
+function addNewProduct(){
+    let title=document.getElementById("prodTitle").value.trim();
+    let price=document.getElementById("prodPrice").value;
+    let image=document.getElementById("prodImage").value.trim();
+    let category=document.getElementById("prodCategory").value;
+    if(title && price && image && category){
+        addProduct(title, price, image, category);
+        document.getElementById("prodTitle").value="";
+        document.getElementById("prodPrice").value="";
+        document.getElementById("prodImage").value="";
+        refreshProducts();
+    }else{
+        alert("لطفاً همه فیلدها را پر کنید.");
+    }
+}
+
+function editProductPrompt(id){
+    let p=products.find(x=>x.id==id);
+    if(p){
+        let title=prompt("عنوان:", p.title);
+        let price=prompt("قیمت:", p.price);
+        let image=prompt("آدرس تصویر:", p.image);
+        let category=prompt("دسته:", p.category);
+        if(title && price && image && category){
+            editProduct(id,title,price,image,category);
+            refreshProducts();
+        }
+    }
+}
+
+function deleteProductConfirm(id){
+    if(confirm("آیا می‌خواهید این محصول حذف شود؟")){
+        deleteProduct(id);
+        refreshProducts();
+    }
+}
+</script>
+
+</body>
+</html>
